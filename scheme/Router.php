@@ -148,6 +148,10 @@ class Router
         $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+        if ($uri === null) {
+            $uri = '/';
+        }
+
         if (str_starts_with($uri, $base_path)) {
             $uri = substr($uri, strlen($base_path) - 1) ?: '/';
         }

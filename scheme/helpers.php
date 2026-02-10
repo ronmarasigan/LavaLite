@@ -22,8 +22,9 @@ function base_url(): string
 
 
 //generate url based on BASE_URL
-function url(string $path = ''): string {
-    return base_url() . '/' . ltrim($path, '/');
+function url(string $path = ''): string
+{
+    return rtrim(base_url(), '/') . '/' . ltrim($path, '/');
 }
 
 //set session flash data
