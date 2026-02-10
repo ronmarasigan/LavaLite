@@ -43,8 +43,11 @@ $user = $db->table('users')
            ->select('id, name, email')
            ->where('id', 1)
 Fluent, readable, and secure — no raw SQL required.
+```
 
-🤝 Contributing
+---
+
+## 🤝 Contributing
 Contributions are welcome!
 
 Fork the repository
@@ -55,11 +58,11 @@ Commit your changes
 
 Open a pull request
 
-📜 License
+## 📜 License
 LavaLite is open-source software licensed under the MIT License.
 
-❤️ Credits
+## ❤️ Credits
 Built with passion using PHP
 Inspired by modern frameworks — simplified.
 
-🔥 LavaLite — Keep it light. Build it fast.
+# 🔥 LavaLite — Keep it light. Build it fast.
