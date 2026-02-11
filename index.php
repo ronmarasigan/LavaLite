@@ -19,12 +19,10 @@ if (IS_DEV) {
     error_reporting(E_ALL);
 } else {
     ini_set('display_errors', 0);
-    // Optionally log errors instead
 }
 
 //use database query builder
 require_once __DIR__ . '/scheme/Database.php';
-//$db = new Database();
 
 //use helper functions
 require_once __DIR__ . '/scheme/helpers.php';

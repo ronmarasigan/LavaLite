@@ -4,7 +4,7 @@
  */
 
 //Dev or Prod
-define('IS_DEV', in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']));
+define('IS_DEV', true);
 
 //Database Config
 define('DB_DRIVER', '');

@@ -27,6 +27,12 @@ function url(string $path = ''): string
     return rtrim(base_url(), '/') . '/' . ltrim($path, '/');
 }
 
+//generate csrf field
+function csrf_field() {
+    $router = new Router();
+    return $router->csrf_field();
+}
+
 //set session flash data
 function set_flash(string $key, string $message): void {
     $_SESSION['flash'][$key] = $message;

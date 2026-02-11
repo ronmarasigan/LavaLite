@@ -210,17 +210,24 @@ class Router
                 foreach ($all_middleware as $mw) {
                     $continue = $mw($request_method, $params);
                     if ($continue === false) {
-                        http_response_code(403);
-                        echo "Access denied by middleware";
-                        exit;
+                        if(IS_DEV) {
+                            http_response_code(403);
+                            $error =  'Access denied by middleware';
+                            include dirname(__DIR__) . '/views/errors/403.php';
+                            exit;
+                        }
                     }
                 }
 
                 if (in_array($request_method, ['POST', 'PUT', 'PATCH', 'DELETE'])
-                    && isset($_POST['csrf_token'])           // ← only validate if field was sent
+                    && isset($_POST['csrf_token'])
                     && !$this->is_csrf_valid()) {
-                    http_response_code(403);
-                    die('CSRF token validation failed.');
+                    if(IS_DEV) {
+                        http_response_code(403);
+                        $error =  'CSRF token validation failed.';
+                        include dirname(__DIR__) . '/views/errors/403.php';
+                        exit;
+                    }
                 }
 
                 $this->execute_handler($route['handler'], $params);
@@ -230,9 +237,12 @@ class Router
                 }
 
             } catch (Exception $e) {
-                http_response_code(500);
-                echo "Server error: " . htmlspecialchars($e->getMessage());
-                exit;
+                if(IS_DEV) {
+                    http_response_code(500);
+                    $error =  "Server error: " . htmlspecialchars($e->getMessage());
+                    include dirname(__DIR__) . '/views/errors/500.php';
+                    exit;
+                }
             }
 
             return;
@@ -272,8 +282,11 @@ class Router
             return;
         }
 
-        http_response_code(500);
-        echo "500 - Handler not found: " . htmlspecialchars($file);
-        exit;
+        if(IS_DEV) {
+            http_response_code(500);
+            $error =  "500 - Handler not found: " . htmlspecialchars($file);
+            include dirname(__DIR__) . '/views/errors/500.php';
+            exit;
+        }
     }
 }
