@@ -198,7 +198,7 @@ class Database {
             $this->db = new PDO($dsn, $username, $password, $options);
              $this->driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
         } catch (Exception $e) {
-            $e->getMessage();
+            throw new PDOException($e->getMessage());
         }
     }
 
@@ -286,7 +286,11 @@ class Database {
                 return $stmt->rowCount();
             }
         } catch (Exception $e) {
-            throw new PDOException($e->getMessage() . 'Query: ' . $this->getSQL . '');
+            http_response_code(500);
+            $error = $e->getMessage() . "<br>Query:  $this->getSQL";
+            include dirname(__DIR__) . '/views/errors/500.php';
+            exit;
+            
         }
     }
 
@@ -1274,7 +1278,10 @@ class Database {
             $this->rowCount = $stmt->rowCount();
             return $stmt->fetch($mode);
         } catch (Exception $e) {
-            $e->getMessage();
+            http_response_code(500);
+            $error = $e->getMessage() . "<br>Query:  $this->getSQL";
+            include dirname(__DIR__) . '/views/errors/500.php';
+            exit;
         }
     }
 
@@ -1293,7 +1300,10 @@ class Database {
             $this->rowCount = $stmt->rowCount();
             return $stmt->fetchAll($mode);
         } catch (Exception $e) {
-            $e->getMessage();
+            http_response_code(500);
+            $error = $e->getMessage() . "<br>Query:  $this->getSQL";
+            include dirname(__DIR__) . '/views/errors/500.php';
+            exit;
         }
     }
 
