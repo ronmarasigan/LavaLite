@@ -39,7 +39,7 @@ $router->post('/send', 'send.php');
 Clean URLs. No magic.
 
 🗄 SQL Query Builder Example
-$user = $db->table('users')
+$user = db()->table('users')
            ->select('id, name, email')
            ->where('id', 1)
 Fluent, readable, and secure — no raw SQL required.
