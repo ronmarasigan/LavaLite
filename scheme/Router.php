@@ -1,5 +1,6 @@
 <?php
 defined('APP_ROOT') OR exit('No direct script access allowed');
+
 /**
  * Simple Router Class based on LavaLust
  * Ronald M. Marasigan
@@ -9,6 +10,8 @@ class Router
     private array $routes = [];
     private array $global_middleware = [];
     private string $csrf_token = '';
+
+    private ?array $pending_route = null;
 
     public function __construct()
     {
@@ -24,49 +27,116 @@ class Router
 
     public function get(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('GET', $path, $handler, $middleware);
+        $this->commit_pending_route(); // save previous if any
+
+        $this->pending_route = [
+            'method'     => 'GET',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
     }
 
     public function post(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('POST', $path, $handler, $middleware);
+        $this->commit_pending_route();
+
+        $this->pending_route = [
+            'method'     => 'POST',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
     }
 
     public function put(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('PUT', $path, $handler, $middleware);
+        $this->commit_pending_route();
+
+        $this->pending_route = [
+            'method'     => 'PUT',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
     }
 
     public function patch(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('PATCH', $path, $handler, $middleware);
+        $this->commit_pending_route();
+
+        $this->pending_route = [
+            'method'     => 'PATCH',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
     }
 
     public function delete(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('DELETE', $path, $handler, $middleware);
+        $this->commit_pending_route();
+
+        $this->pending_route = [
+            'method'     => 'DELETE',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
     }
 
     public function any(string $path, string|callable $handler, array $middleware = []): self
     {
-        $this->add_route('ANY', $path, $handler, $middleware);
+        $this->commit_pending_route();
+
+        $this->pending_route = [
+            'method'     => 'ANY',
+            'path'       => trim($path, '/'),
+            'handler'    => $handler,
+            'middleware' => $middleware,
+        ];
         return $this;
+    }
+
+    public function middleware(string|callable $mw): self
+    {
+        if ($this->pending_route === null) {
+            throw new RuntimeException(
+                "Cannot call ->middleware() without a preceding route definition (get/post/put/etc.)"
+            );
+        }
+
+        $this->pending_route['middleware'][] = $mw;
+        return $this;
+    }
+
+    private function commit_pending_route(): void
+    {
+        if ($this->pending_route !== null) {
+            $this->routes[] = $this->pending_route;
+            $this->pending_route = null;
+        }
     }
 
     public function group(array $attributes, callable $callback): self
     {
-        $previous_routes_count = count($this->routes);
+        $this->commit_pending_route();
+
+        $previous_count = count($this->routes);
 
         $callback($this);
 
-        $new_routes = array_slice($this->routes, $previous_routes_count);
+        $this->commit_pending_route();
+
+        $new_routes = array_slice($this->routes, $previous_count);
 
         foreach ($new_routes as &$route) {
+            // Apply prefix
             if (!empty($attributes['prefix'])) {
                 $prefix = trim($attributes['prefix'], '/');
                 if ($prefix !== '') {
@@ -74,27 +144,18 @@ class Router
                 }
             }
 
+            // Merge middleware
             if (!empty($attributes['middleware'])) {
                 $route['middleware'] = array_merge(
                     (array) $attributes['middleware'],
-                    $route['middleware']
+                    $route['middleware'] ?? []
                 );
             }
         }
 
-        array_splice($this->routes, $previous_routes_count, count($new_routes), $new_routes);
+        array_splice($this->routes, $previous_count, count($new_routes), $new_routes);
 
         return $this;
-    }
-
-    private function add_route(string $method, string $path, string|callable $handler, array $middleware): void
-    {
-        $this->routes[] = [
-            'method'     => $method,
-            'path'       => trim($path, '/'),
-            'handler'    => $handler,
-            'middleware' => $middleware,
-        ];
     }
 
     public function add_global_middleware(callable $middleware): self
@@ -128,29 +189,20 @@ class Router
     public function get_base_path(): string
     {
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
-
         $script = preg_replace('#/index\.php$#', '', $script);
         $script = preg_replace('#/index$#', '', $script);
-
         $base = '/' . trim($script, '/') . '/';
-
-        if ($base === '//') {
-            $base = '/';
-        }
-
-        return $base;
+        return $base === '//' ? '/' : $base;
     }
 
     public function run(): void
     {
+        $this->commit_pending_route();
+
         $base_path = $this->get_base_path();
 
         $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-
-        if ($uri === null) {
-            $uri = '/';
-        }
+        $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
         if (str_starts_with($uri, $base_path)) {
             $uri = substr($uri, strlen($base_path) - 1) ?: '/';
@@ -203,31 +255,82 @@ class Router
 
             $all_middleware = array_merge(
                 $this->global_middleware,
-                $route['middleware']
+                $route['middleware'] ?? []
             );
 
             try {
                 foreach ($all_middleware as $mw) {
-                    $continue = $mw($request_method, $params);
+                    $callable = null;
+
+                    if (is_callable($mw)) {
+                        $callable = $mw;
+                    }
+                    elseif (is_string($mw)) {
+                        $file = $mw;
+
+                        if (!str_ends_with($file, '.php')) {
+                            $file .= '.php';
+                        }
+
+                        if (!str_contains($file, '/')) {
+                            $file = 'middlewares/' . $file;
+                        }
+
+                        if (file_exists($file)) {
+                            $included = include $file;
+
+                            if (is_callable($included)) {
+                                $callable = $included;
+                            } else {
+                                if (defined('IS_DEV') && IS_DEV) {
+                                    throw new RuntimeException(
+                                        "Middleware file '$file' must return a callable. Returned: " .
+                                        var_export($included, true)
+                                    );
+                                }
+                                $callable = fn() => true;
+                            }
+                        }
+                        else {
+                            if (defined('IS_DEV') && IS_DEV) {
+                                throw new RuntimeException("Middleware file not found: $file");
+                            }
+                            $callable = fn() => true;
+                        }
+                    }
+                    else {
+                        // Completely invalid type
+                        if (defined('IS_DEV') && IS_DEV) {
+                            throw new RuntimeException(
+                                "Middleware must be callable or string filename. Got: " . gettype($mw)
+                            );
+                        }
+                        $callable = fn() => true;
+                    }
+
+                    $continue = $callable($request_method, $params);
+
                     if ($continue === false) {
-                        if(IS_DEV) {
+                        if (defined('IS_DEV') && IS_DEV) {
                             http_response_code(403);
-                            $error =  'Access denied by middleware';
+                            $error = 'Access denied by middleware';
                             include dirname(__DIR__) . '/views/errors/403.php';
                             exit;
                         }
+                        exit;
                     }
                 }
 
                 if (in_array($request_method, ['POST', 'PUT', 'PATCH', 'DELETE'])
                     && isset($_POST['csrf_token'])
                     && !$this->is_csrf_valid()) {
-                    if(IS_DEV) {
+                    if (defined('IS_DEV') && IS_DEV) {
                         http_response_code(403);
-                        $error =  'CSRF token validation failed.';
+                        $error = 'CSRF token validation failed.';
                         include dirname(__DIR__) . '/views/errors/403.php';
                         exit;
                     }
+                    exit;
                 }
 
                 $this->execute_handler($route['handler'], $params);
@@ -237,12 +340,13 @@ class Router
                 }
 
             } catch (Exception $e) {
-                if(IS_DEV) {
+                if (defined('IS_DEV') && IS_DEV) {
                     http_response_code(500);
-                    $error =  "Server error: " . htmlspecialchars($e->getMessage());
+                    $error = "Server error: " . htmlspecialchars($e->getMessage());
                     include dirname(__DIR__) . '/views/errors/500.php';
                     exit;
                 }
+                exit;
             }
 
             return;
@@ -264,11 +368,9 @@ class Router
 
         if (str_starts_with($file, '/') || preg_match('#^[A-Z]:[\\\\/]#i', $file)) {
             // keep as is
-        }
-        elseif (str_starts_with($file, './') || str_starts_with($file, '../')) {
+        } elseif (str_starts_with($file, './') || str_starts_with($file, '../')) {
             $file = __DIR__ . '/' . ltrim($file, './');
-        }
-        else {
+        } else {
             $file = APP_ROOT . '/' . $file;
         }
 
@@ -282,11 +384,14 @@ class Router
             return;
         }
 
-        if(IS_DEV) {
+        if (defined('IS_DEV') && IS_DEV) {
             http_response_code(500);
-            $error =  "500 - Handler not found: " . htmlspecialchars($file);
+            $error = "500 - Handler not found: " . htmlspecialchars($file);
             include dirname(__DIR__) . '/views/errors/500.php';
             exit;
         }
+
+        http_response_code(500);
+        exit;
     }
 }
