@@ -1,0 +1,5 @@
+# Deny direct access to php files
+<Files ~ "\.php$">
+    Order allow,deny
+    Deny from all
+</Files>
