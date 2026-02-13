@@ -273,7 +273,7 @@ class Router
                         }
 
                         if (!str_contains($file, '/')) {
-                            $file = 'middlewares/' . $file;
+                            $file = dirname(__DIR__) . "/middlewares/$file";
                         }
 
                         if (file_exists($file)) {
