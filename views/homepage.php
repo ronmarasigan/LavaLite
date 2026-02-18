@@ -178,7 +178,7 @@
       </p>
 
       <div class="buttons">
-        <!--<a href="/docs" class="btn btn-primary">Get Started →</a>-->
+        <a href="https://lavalite.netlify.app" class="btn btn-primary">Get Started →</a>
         <a href="https://github.com/ronmarasigan/lavalite" target="_blank" class="btn btn-outline">View on GitHub</a>
       </div>
     </header>

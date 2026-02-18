@@ -61,3 +61,24 @@ function db() {
     $db = new Database();
     return $db;
 }
+
+//escape output
+function esc($var, $double_encode = TRUE): string|array
+{
+    if (empty($var))
+		{
+			return $var;
+		}
+
+		if (is_array($var))
+		{
+			foreach (array_keys($var) as $key)
+			{
+				$var[$key] = esc($var[$key], $double_encode);
+			}
+
+			return $var;
+		}
+
+		return htmlspecialchars($var, ENT_QUOTES, 'utf-8', $double_encode);
+}
